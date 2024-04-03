@@ -1,0 +1,30 @@
+{
+    "name": "bingher/db",
+    "description": "ThinkPHP orm driver for DM(达梦),KingDatabase(金仓)",
+    "type": "library",
+    "require": {
+        "php": ">=7.1|>= 7.2.5|>=8.0.0",
+        "topthink/framework": "^5|^6|^8.0",
+        "topthink/think-orm": "^2.0|^3.0",
+        "topthink/think-cache": "^2.0",
+        "topthink/think-log": "^2.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "bingher\\db\\": "src/",
+            "bingher\\tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "hbh112233abc",
+            "email": "hbh112233abc@163.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require-dev": {
+        "phpunit/phpunit": "^9.6",
+        "bingher/think-test": "^1.0"
+    }
+}
