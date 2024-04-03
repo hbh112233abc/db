@@ -153,7 +153,11 @@ class DM extends PDOConnection
     public function insert(BaseQuery $query, bool $getLastInsID = false)
     {
         $this->initConnect();
-        $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
+        try {
+            $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
         $result = parent::insert($query, $getLastInsID);
         // $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} OFF");
         return $result;
@@ -162,7 +166,11 @@ class DM extends PDOConnection
     public function insertAll(BaseQuery $query, array $dataSet = []): int
     {
         $this->initConnect();
-        $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
+        try {
+            $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
         $result = parent::insertAll($query, $dataSet);
         // $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} OFF");
         return $result;
