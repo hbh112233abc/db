@@ -43,7 +43,51 @@ class DM extends PDOConnection
     public function getFields(string $tableName): array
     {
         list($tableName) = explode(' ', $tableName);
-        $sql             = "select a.column_name,data_type,DECODE (nullable, 'Y', 0, 1) notnull,data_default, DECODE (A .column_name,b.column_name,1,0) pk from all_tab_columns a,(select column_name from all_constraints c, all_cons_columns col where c.constraint_name = col.constraint_name and c.constraint_type = 'P' and c.table_name = '" . strtoupper($tableName) . "' ) b where table_name = '" . strtoupper($tableName) . "' and a.column_name = b.column_name (+)";
+        $tableName       = strtoupper($tableName);
+        $schema          = strtoupper($this->config['database']);
+        $sql             = sprintf(
+            <<<EOF
+            SELECT
+                a.column_name,
+                data_type,
+                DECODE (nullable, 'Y', 0, 1) notnull,
+                data_default,
+                DECODE (a.column_name,b.column_name,1,0) pk,
+                DECODE (a.column_name,d.column_name,1,0) autoinc
+            FROM
+            all_tab_columns a,
+            (
+                SELECT column_name
+                FROM
+                all_constraints c,
+                all_cons_columns col
+                WHERE
+                c.constraint_name = col.constraint_name
+                AND c.constraint_type = 'P'
+                AND c.table_name = '%s'
+                AND c.owner = '%s'
+            ) b,
+            (
+                SELECT COL.NAME as column_name
+                FROM SYSOBJECTS TAB
+                    ,SYSCOLUMNS COL
+                where TAB.ID = COL.ID
+                AND TAB.TYPE$ = 'SCHOBJ'
+                AND TAB.SUBTYPE$ = 'UTAB'
+                AND COL.INFO2 & 0x01 = 1
+                AND TAB.SCHID = CURRENT_SCHID
+                AND TAB.NAME = '%s'
+            ) d
+            WHERE table_name = '%s'
+            AND owner = 'EFILEYUN_TEST'
+            AND a.column_name = d.column_name (+)
+            AND a.column_name = b.column_name (+)
+            EOF,
+            $tableName,
+            $schema,
+            $tableName,
+            $tableName,
+        );
 
         $pdo    = $this->getPDOStatement($sql);
         $result = $pdo->fetchAll(PDO::FETCH_ASSOC);
@@ -59,7 +103,7 @@ class DM extends PDOConnection
                     'notnull' => $val['notnull'],
                     'default' => $val['data_default'],
                     'primary' => $val['pk'],
-                    'autoinc' => $val['pk'],
+                    'autoinc' => $val['autoinc'],
                 ];
             }
         }
@@ -150,29 +194,63 @@ class DM extends PDOConnection
         }
     }
 
+    /**
+     * 设置自增主键支持插入
+     *
+     * @param  BaseQuery $query 查询对象
+     * @param  bool      $on    true: ON; false: OFF
+     *
+     * @return int              0:无需设置,1:设置成功,-1:设置失败
+     */
+    protected function setIdentityInsert(BaseQuery $query, bool $on = true): int
+    {
+        $pk = $query->getPk();
+        if (empty($pk)) {
+            return 0;
+        }
+        $data = $query->getOptions('data');
+        if (!isset($data[$pk])) {
+            return 0;
+        }
+        $this->initConnect();
+        $flag    = $on ? 'ON' : 'OFF';
+        $table   = $query->getTable();
+        $fields  = $this->getFields($table);
+        $pkField = $fields[$pk] ?? [];
+        if (empty($pkField) || $pkField['autoinc'] === 0) {
+            return 0;
+        }
+        try {
+            $this->linkID->exec("SET IDENTITY_INSERT {$table} {$flag}");
+            return 1;
+        } catch (\Throwable $th) {
+            return -1;
+        }
+    }
+
     public function insert(BaseQuery $query, bool $getLastInsID = false)
     {
-        $this->initConnect();
-        try {
-            $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
-        } catch (\Throwable $th) {
-            //throw $th;
-        }
+        $this->setIdentityInsert($query);
         $result = parent::insert($query, $getLastInsID);
-        // $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} OFF");
         return $result;
     }
 
     public function insertAll(BaseQuery $query, array $dataSet = []): int
     {
-        $this->initConnect();
         try {
-            $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} ON");
+            $this->initConnect();
+            //过滤无关字段
+            $table  = $query->getTable();
+            $fields = $this->getFields($table);
+            $keys   = array_flip(array_keys($fields));
+            foreach ($dataSet as &$data) {
+                $data = array_intersect_key($data, $keys);
+            }
+            $this->linkID->exec("SET IDENTITY_INSERT {$table} ON");
         } catch (\Throwable $th) {
             //throw $th;
         }
         $result = parent::insertAll($query, $dataSet);
-        // $this->linkID->exec("SET IDENTITY_INSERT {$query->getTable()} OFF");
         return $result;
     }
 }
