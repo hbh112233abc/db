@@ -79,7 +79,7 @@ class DM extends PDOConnection
                 AND TAB.NAME = '%s'
             ) d
             WHERE table_name = '%s'
-            AND owner = 'EFILEYUN_TEST'
+            AND owner = '%s'
             AND a.column_name = d.column_name (+)
             AND a.column_name = b.column_name (+)
             EOF,
@@ -87,6 +87,7 @@ class DM extends PDOConnection
             $schema,
             $tableName,
             $tableName,
+            $schema,
         );
 
         $pdo    = $this->getPDOStatement($sql);
