@@ -27,9 +27,9 @@ class DM extends PDOConnection
             $dsn .= ';dbname=' . $config['database'];
         }
 
-        // if (!empty($config['charset'])) {
-        //     $dsn .= ';charset=' . $config['charset'];
-        // }
+        if (!empty($config['charset'])) {
+            $dsn .= ';charset=' . $config['charset'];
+        }
 
         return $dsn;
     }
@@ -142,7 +142,6 @@ class DM extends PDOConnection
     // public function getLastInsID($sequence = null)
     public function getLastInsID(BaseQuery $query, string $sequence = null)
     {
-        // $pdo      = $this->linkID->query("select {$sequence}.currval as id from dual");
         $pdo      = $this->linkID->query("SELECT LAST_INSERT_ID();");
         $insertId = $pdo->fetchColumn();
 
