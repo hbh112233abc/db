@@ -451,4 +451,19 @@ class DmTest extends Base
         dump($res);
         $this->assertTrue($res == 1);
     }
+
+    public function testKeyword()
+    {
+        $db   = Db::connect();
+        $data = [
+            "mysqlid" => "backup_database",
+            "ip"      => "192.168.103.38",
+            "port"    => 3306,
+            "user"    => "root1",
+            "pwd"     => "xmhymake1",
+            "state"   => 1
+        ];
+        $res  = $db->table('hy_mysql')->where('mysqlid', $data['mysqlid'])->update($data);
+        $this->assertEquals($res, 1);
+    }
 }
