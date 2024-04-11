@@ -120,7 +120,7 @@ class DM extends PDOConnection
      */
     public function getTables(string $dbName = ''): array
     {
-        $sql    = 'select table_name from all_tables';
+        $sql    = sprintf("select table_name from all_tables WHERE owner='%s'", strtoupper($dbName));
         $pdo    = $this->getPDOStatement($sql);
         $result = $pdo->fetchAll(PDO::FETCH_ASSOC);
         $info   = [];
@@ -133,19 +133,20 @@ class DM extends PDOConnection
     }
 
     /**
-     * 获取最近插入的ID（如果使用自增列，需去掉此方法）
+     * 获取最近插入的ID
      * @access public
      * @param BaseQuery $query    查询对象
      * @param string    $sequence 自增序列名
      * @return mixed
      */
-    // public function getLastInsID($sequence = null)
     public function getLastInsID(BaseQuery $query, string $sequence = null)
     {
-        $pdo      = $this->linkID->query("SELECT LAST_INSERT_ID();");
+        $pdo      = $this->linkID->query("SELECT SCOPE_IDENTITY()");
         $insertId = $pdo->fetchColumn();
-
-        return $this->autoInsIDType($query, $insertId);
+        if ($insertId) {
+            $insertId = $this->autoInsIDType($query, $insertId);
+            return $insertId - 1;
+        }
     }
 
     /**
