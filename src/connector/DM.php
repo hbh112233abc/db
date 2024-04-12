@@ -143,10 +143,7 @@ class DM extends PDOConnection
     {
         $pdo      = $this->linkID->query("SELECT SCOPE_IDENTITY()");
         $insertId = $pdo->fetchColumn();
-        if ($insertId) {
-            $insertId = $this->autoInsIDType($query, $insertId);
-            return $insertId - 1;
-        }
+        $this->autoInsIDType($query, $insertId);
     }
 
     /**
