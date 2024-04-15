@@ -43,10 +43,15 @@ class DM extends PDOConnection
     public function getFields(string $tableName): array
     {
         list($tableName) = explode(' ', $tableName);
-        $tableName       = strtoupper($tableName);
-        $schema          = strtoupper($this->config['database']);
-        $sql             = sprintf(
-            <<<EOF
+
+        $tableName = strtoupper($tableName);
+        $schema    = strtoupper($this->config['database']);
+
+        $logSql = $this->config['trigger_sql'];
+
+        $this->config['trigger_sql'] = false;
+
+        $sql = <<<EOF
             SELECT
                 a.column_name,
                 data_type,
@@ -64,34 +69,32 @@ class DM extends PDOConnection
                 WHERE
                 c.constraint_name = col.constraint_name
                 AND c.constraint_type = 'P'
-                AND c.table_name = '%s'
-                AND c.owner = '%s'
+                AND c.table_name = '{$tableName}'
+                AND c.owner = '{$schema}'
             ) b,
             (
                 SELECT COL.NAME as column_name
                 FROM SYSOBJECTS TAB
                     ,SYSCOLUMNS COL
+                    ,DBA_OBJECTS OBJ
                 where TAB.ID = COL.ID
+                AND TAB.SCHID = OBJ.OBJECT_ID
                 AND TAB.TYPE$ = 'SCHOBJ'
                 AND TAB.SUBTYPE$ = 'UTAB'
                 AND COL.INFO2 & 0x01 = 1
-                AND TAB.SCHID = CURRENT_SCHID
-                AND TAB.NAME = '%s'
+                AND OBJ.OWNER = '{$schema}'
+                AND TAB.NAME = '{$tableName}'
             ) d
-            WHERE table_name = '%s'
-            AND owner = '%s'
+            WHERE table_name = '{$tableName}'
+            AND owner = '{$schema}'
             AND a.column_name = d.column_name (+)
             AND a.column_name = b.column_name (+)
-            EOF,
-            $tableName,
-            $schema,
-            $tableName,
-            $tableName,
-            $schema,
-        );
+        EOF;
 
         $pdo    = $this->getPDOStatement($sql);
         $result = $pdo->fetchAll(PDO::FETCH_ASSOC);
+
+        $this->config['trigger_sql'] = $logSql;
 
         $info = [];
 
