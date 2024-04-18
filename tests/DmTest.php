@@ -481,4 +481,33 @@ class DmTest extends Base
         dump($res);
         $this->assertGreaterThan(1, $res);
     }
+
+    public function testNotPk()
+    {
+        $dir = array(
+            "cdefid"      => "202404180857",
+            "ccode"       => "f65d1932e0da11eea6a1005056b220a7",
+            "sno"         => 88,
+            "dircode"     => "4.2.23",
+            "title"       => "竣工图",
+            "titleprop"   => "",
+            "pcdefid"     => "1684476ce0e011eeac27005056b220a7",
+            "subject"     => "project",
+            "props"       => "[{\"name\":\"b_projname\",\"displaytext\":\"工程项目名称\",\"roletype\":\"0\",\"visible\":\"1\",\"value\":\"\",\"default\":\"project.s_name\",\"feature\":\"0\",\"no\":1,\"source\":\"0\"},{\"name\":\"b_projid\",\"displaytext\":\"工程项目ID\",\"roletype\":\"0\",\"visible\":\"0\",\"value\":\"\",\"default\":\"project.s_id\",\"feature\":\"1\",\"no\":2,\"source\":\"0\"},{\"name\":\"b_constructor_comrole\",\"displaytext\":\"建设单位\",\"roletype\":\"1\",\"visible\":\"1\",\"value\":\"\",\"default\":\"project.b_constructor_comrole\",\"feature\":\"0\",\"no\":3,\"source\":\"0\"},{\"name\":\"b_qualityorg_comroles\",\"displaytext\":\"质量监督机构\",\"roletype\":\"1\",\"visible\":\"1\",\"value\":\"\",\"default\":\"project.b_qualityorg_comroles\",\"feature\":\"0\",\"no\":4,\"source\":\"0\"},{\"name\":\"b_safetyorg_comroles\",\"displaytext\":\"安全监督机构\",\"roletype\":\"1\",\"visible\":\"1\",\"value\":\"\",\"default\":\"project.b_safetyorg_comroles\",\"feature\":\"0\",\"no\":5,\"source\":\"0\"},{\"name\":\"b_unitprojname\",\"displaytext\":\"单位工程名称\",\"roletype\":\"0\",\"visible\":\"1\",\"value\":\"\",\"default\":\"unitproj.s_name\",\"feature\":\"0\",\"no\":6,\"source\":\"0\"},{\"name\":\"b_unitprojid\",\"displaytext\":\"单位工程ID\",\"roletype\":\"0\",\"visible\":\"1\",\"value\":\"\",\"default\":\"unitproj.s_id\",\"feature\":\"1\",\"no\":7,\"source\":\"0\"},{\"name\":\"b_fileclsno\",\"displaytext\":\"文件分类代码\",\"roletype\":\"0\",\"visible\":\"1\",\"value\":\"4.2.23\",\"default\":\"\",\"feature\":\"1\",\"no\":8,\"source\":1},{\"name\":\"b_fileclsname\",\"displaytext\":\"文件分类名称\",\"roletype\":\"0\",\"visible\":\"1\",\"value\":\"竣工图\",\"default\":\"\",\"feature\":\"1\",\"no\":9,\"source\":1}]",
+            "kvs"         => "b_projid,b_unitprojid,b_fileclsno",
+            "clevel"      => 5,
+            "dircodeprop" => null,
+            "clsid"       => null,
+            "psno"        => 60,
+            "codepath"    => "_1_2_2.4_4.2_4.2.23",
+            "left"        => 148,
+            "right"       => 149
+        );
+        Db::table('hy_cabtemplates_dirs')->where('cdefid', $dir['cdefid'])->delete();
+        $pk = Db::table('hy_cabtemplates_dirs')->insertGetId($dir);
+        dump($pk);
+        $this->assertEquals($pk, 1);
+        Db::table('hy_cabtemplates_dirs')->where('cdefid', $dir['cdefid'])->delete();
+    }
+
 }
