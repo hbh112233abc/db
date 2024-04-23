@@ -1,9 +1,10 @@
 <?php
 namespace bingher\tests;
 
+use bingher\ThinkTest\ThinkTest;
 use think\facade\Db;
 
-class DmTest extends Base
+class DmTest extends ThinkTest
 {
     public function testConnect()
     {
