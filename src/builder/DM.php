@@ -13,8 +13,7 @@ use think\db\Raw;
  */
 class DM extends Builder
 {
-    protected $selectSql = 'SELECT %DISTINCT% %FIELD% FROM %TABLE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER% %LIMIT%%COMMENT%';
-
+    protected $selectSql = 'SELECT  %DISTINCT% %FIELD% FROM %TABLE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER% %LIMIT%%COMMENT%';
 
     /**
      * limit分析
@@ -23,23 +22,23 @@ class DM extends Builder
      * @param  mixed $limit
      * @return string
      */
-    protected function parseLimit(Query $query, string $limit): string
-    {
-        $limitStr = '';
+    // protected function parseLimit(Query $query, string $limit): string
+    // {
+    //     $limitStr = '';
 
-        if (!empty($limit)) {
-            $limit = explode(',', $limit);
+    //     if (!empty($limit)) {
+    //         $limit = explode(',', $limit);
 
-            if (count($limit) > 1) {
-                $limitStr = "(numrow>" . $limit[0] . ") AND (numrow<=" . ($limit[0] + $limit[1]) . ")";
-            } else {
-                $limitStr = "(numrow>0 AND numrow<=" . $limit[0] . ")";
-            }
+    //         if (count($limit) > 1) {
+    //             $limitStr = "(numrow>" . $limit[0] . ") AND (numrow<=" . ($limit[0] + $limit[1]) . ")";
+    //         } else {
+    //             $limitStr = "(numrow>0 AND numrow<=" . $limit[0] . ")";
+    //         }
 
-        }
+    //     }
 
-        return $limitStr ? ' WHERE ' . $limitStr : '';
-    }
+    //     return $limitStr ? ' WHERE ' . $limitStr : '';
+    // }
 
     /**
      * 设置锁机制
