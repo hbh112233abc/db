@@ -16,6 +16,13 @@ class DM extends Builder
     protected $selectSql = 'SELECT  %DISTINCT% %FIELD% FROM %TABLE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER% %LIMIT%%COMMENT%';
 
     /**
+     * INSERT ALL SQL表达式.
+     *
+     * @var string
+     */
+    protected $insertAllSql = '%INSERT%%EXTRA% INTO %TABLE%%PARTITION% (%FIELD%) VALUES %DATA% %COMMENT%';
+
+    /**
      * limit分析
      * @access protected
      * @param  Query $query 查询对象
@@ -119,5 +126,78 @@ class DM extends Builder
     protected function parseRand(Query $query): string
     {
         return 'DBMS_RANDOM.value';
+    }
+
+    /**
+     * Partition 分析.
+     *
+     * @param Query        $query     查询对象
+     * @param string|array $partition 分区
+     *
+     * @return string
+     */
+    protected function parsePartition(Query $query, $partition): string
+    {
+        if ('' == $partition) {
+            return '';
+        }
+
+        if (is_string($partition)) {
+            $partition = explode(',', $partition);
+        }
+
+        return ' PARTITION (' . implode(' , ', $partition) . ') ';
+    }
+
+    /**
+     * 生成insertall SQL.
+     *
+     * @param Query $query   查询对象
+     * @param array $dataSet 数据集
+     *
+     * @return string
+     */
+    public function insertAll(Query $query, array $dataSet): string
+    {
+        $options = $query->getOptions();
+        $bind    = $query->getFieldsBindType();
+
+        // 获取合法的字段
+        if (empty($options['field']) || '*' == $options['field']) {
+            $allowFields = array_keys($bind);
+        } else {
+            $allowFields = $options['field'];
+        }
+
+        $fields = [];
+        $values = [];
+
+        foreach ($dataSet as $data) {
+            $data = $this->parseData($query, $data, $allowFields, $bind);
+
+            $values[] = '( ' . implode(',', array_values($data)) . ' )';
+
+            if (!isset($insertFields)) {
+                $insertFields = array_keys($data);
+            }
+        }
+
+        foreach ($insertFields as $field) {
+            $fields[] = $this->parseKey($query, $field);
+        }
+
+        return str_replace(
+            ['%INSERT%', '%EXTRA%', '%TABLE%', '%PARTITION%', '%FIELD%', '%DATA%', '%COMMENT%'],
+            [
+                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                $this->parseExtra($query, $options['extra']),
+                $this->parseTable($query, $options['table']),
+                $this->parsePartition($query, $options['partition']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->insertAllSql
+        );
     }
 }
