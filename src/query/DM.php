@@ -1,5 +1,5 @@
 <?php
-namespace bingher\db\builder;
+namespace bingher\db\query;
 
 use think\db\Query;
 
