@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace bingher\db\builder;
 
+use bingher\db\connector\DM as ConnectorDM;
 use Exception;
 use PDO;
 use think\db\Builder;
@@ -15,6 +16,13 @@ use think\db\Raw;
 class DM extends Builder
 {
     protected $selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER% %LIMIT%%COMMENT%';
+
+    /**
+     * INSERT ALL SQL表达式.
+     *
+     * @var string
+     */
+    protected $insertAllSql = '%INSERT%%EXTRA% INTO %TABLE%%PARTITION% (%FIELD%) VALUES %DATA% %DUPLICATE%%COMMENT%';
 
     /**
      * 设置锁机制
@@ -108,6 +116,164 @@ class DM extends Builder
     public function replace(bool $replace = true)
     {
         return $this;
+    }
+
+    /**
+     * Partition 分析.
+     *
+     * @param Query        $query     查询对象
+     * @param string|array $partition 分区
+     *
+     * @return string
+     */
+    protected function parsePartition(Query $query, $partition): string
+    {
+        if ('' == $partition) {
+            return '';
+        }
+
+        if (is_string($partition)) {
+            $partition = explode(',', $partition);
+        }
+
+        return ' PARTITION (' . implode(' , ', $partition) . ') ';
+    }
+
+    /**
+     * ON DUPLICATE KEY UPDATE 分析.
+     *
+     * @param Query $query     查询对象
+     * @param mixed $duplicate
+     *
+     * @return string
+     */
+    protected function parseDuplicate(Query $query, $duplicate): string
+    {
+        if ('' == $duplicate) {
+            return '';
+        }
+
+        if ($duplicate instanceof Raw) {
+            return ' ON DUPLICATE KEY UPDATE ' . $this->parseRaw($query, $duplicate) . ' ';
+        }
+
+        if (is_string($duplicate)) {
+            $duplicate = explode(',', $duplicate);
+        }
+
+        $updates = [];
+        foreach ($duplicate as $key => $val) {
+            if (is_numeric($key)) {
+                $val       = $this->parseKey($query, $val);
+                $updates[] = $val . ' = VALUES(' . $val . ')';
+            } elseif ($val instanceof Raw) {
+                $updates[] = $this->parseKey($query, $key) . ' = ' . $this->parseRaw($query, $val);
+            } else {
+                $name      = $query->bindValue($val, $query->getConnection()->getFieldBindType($key));
+                $updates[] = $this->parseKey($query, $key) . ' = :' . $name;
+            }
+        }
+
+        return ' ON DUPLICATE KEY UPDATE ' . implode(' , ', $updates) . ' ';
+    }
+
+    /**
+     * 生成insertall SQL.
+     *
+     * @param Query $query   查询对象
+     * @param array $dataSet 数据集
+     *
+     * @return string
+     */
+    public function insertAll(Query $query, array $dataSet): string
+    {
+        $options = $query->getOptions();
+        $bind    = $query->getFieldsBindType();
+
+        // 获取合法的字段
+        if (empty($options['field']) || '*' == $options['field']) {
+            $allowFields = array_keys($bind);
+        } else {
+            $allowFields = $options['field'];
+        }
+
+        $fields = [];
+        $values = [];
+
+        foreach ($dataSet as $data) {
+            $data = $this->parseData($query, $data, $allowFields, $bind);
+
+            $values[] = '( ' . implode(',', array_values($data)) . ' )';
+
+            if (!isset($insertFields)) {
+                $insertFields = array_keys($data);
+            }
+        }
+
+        foreach ($insertFields as $field) {
+            $fields[] = $this->parseKey($query, $field);
+        }
+
+        return str_replace(
+            ['%INSERT%', '%EXTRA%', '%TABLE%', '%PARTITION%', '%FIELD%', '%DATA%', '%DUPLICATE%', '%COMMENT%'],
+            [
+                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                $this->parseExtra($query, $options['extra']),
+                $this->parseTable($query, $options['table']),
+                $this->parsePartition($query, $options['partition']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseDuplicate($query, $options['duplicate']),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->insertAllSql
+        );
+    }
+
+    /**
+     * 生成insertall SQL
+     * @access public
+     * @param  Query    $query   查询对象
+     * @param  array    $keys 键值
+     * @param  array    $values 数据
+     * @return string
+     */
+    public function insertAllByKeys(Query $query, array $keys, array $datas): string
+    {
+        $options = $query->getOptions();
+        $bind    = $query->getFieldsBindType();
+        $fields  = [];
+        $values  = [];
+
+        foreach ($keys as $field) {
+            $fields[] = $this->parseKey($query, $field);
+        }
+
+        foreach ($datas as $data) {
+            foreach ($data as $key => &$val) {
+                if (!$query->isAutoBind()) {
+                    $val = PDO::PARAM_STR == $bind[$keys[$key]] ? '\'' . $val . '\'' : $val;
+                } else {
+                    $val = $this->parseDataBind($query, $keys[$key], $val, $bind);
+                }
+            }
+            $values[] = '( ' . implode(',', $data) . ' )';
+        }
+
+        return str_replace(
+            ['%INSERT%', '%EXTRA%', '%TABLE%', '%PARTITION%', '%FIELD%', '%DATA%', '%DUPLICATE%', '%COMMENT%'],
+            [
+                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                $this->parseExtra($query, $options['extra']),
+                $this->parseTable($query, $options['table']),
+                $this->parsePartition($query, $options['partition']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseDuplicate($query, $options['duplicate']),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->insertAllSql
+        );
     }
 
 }
