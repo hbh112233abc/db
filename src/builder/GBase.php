@@ -10,9 +10,9 @@ use think\db\BaseQuery as Query;
 use think\db\Raw;
 
 /**
- * 达梦数据库驱动
+ * 南大通用数据库驱动
  */
-class DM extends Builder
+class GBase extends Builder
 {
     protected $selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER% %LIMIT%%COMMENT%';
 
@@ -23,21 +23,6 @@ class DM extends Builder
      */
     protected $insertAllSql = '%INSERT%%EXTRA% INTO %TABLE%%PARTITION% (%FIELD%) VALUES %DATA% %DUPLICATE%%COMMENT%';
 
-    /**
-     * 设置锁机制
-     * @access protected
-     * @param  Query      $query 查询对象
-     * @param  bool|false $lock
-     * @return string
-     */
-    protected function parseLock(Query $query, $lock = false): string
-    {
-        if (!$lock) {
-            return '';
-        }
-
-        return ' FOR UPDATE NOWAIT ';
-    }
 
     /**
      * 字段和表名处理
@@ -62,7 +47,7 @@ class DM extends Builder
         if (str_contains($key, '->') && !str_contains($key, '(')) {
             // JSON字段支持
             [$field, $name] = explode($key, '->');
-            $key            = $field . '."' . $name . '"';
+            $key            = $field . '.' . $name;
         } elseif (str_contains($key, '.') && !preg_match('/[,\'\"\(\)\[\s]/', $key)) {
             [$table, $key] = explode('.', $key, 2);
 
@@ -82,12 +67,9 @@ class DM extends Builder
             throw new Exception('not support data:' . $key);
         }
 
-        if ('*' != $key && !preg_match('/[,\'\"\*\(\)\[.\s]/', $key)) {
-            $key = '"' . $key . '"';
-        }
 
         if (isset($table)) {
-            $key = '"' . $table . '".' . $key;
+            $key = $table . '.' . $key;
         }
 
         return $key;
@@ -101,7 +83,7 @@ class DM extends Builder
      */
     protected function parseRand(Query $query): string
     {
-        return 'DBMS_RANDOM.value';
+        return 'DBMS_RANDOM.value()';
     }
 
 
@@ -135,7 +117,7 @@ class DM extends Builder
             $partition = explode(',', $partition);
         }
 
-        return ' PARTITION (' . implode(' , ', $partition) . ') ';
+        return ' PARTITION BY ' . implode(' , ', $partition);
     }
 
     /**
@@ -216,7 +198,7 @@ class DM extends Builder
         return str_replace(
             ['%INSERT%', '%EXTRA%', '%TABLE%', '%PARTITION%', '%FIELD%', '%DATA%', '%DUPLICATE%', '%COMMENT%'],
             [
-                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                'INSERT',
                 $this->parseExtra($query, $options['extra']),
                 $this->parseTable($query, $options['table']),
                 $this->parsePartition($query, $options['partition']),
@@ -228,51 +210,4 @@ class DM extends Builder
             $this->insertAllSql
         );
     }
-
-    /**
-     * 生成insertall SQL
-     * @access public
-     * @param  Query    $query   查询对象
-     * @param  array    $keys 键值
-     * @param  array    $values 数据
-     * @return string
-     */
-    public function insertAllByKeys(Query $query, array $keys, array $datas): string
-    {
-        $options = $query->getOptions();
-        $bind    = $query->getFieldsBindType();
-        $fields  = [];
-        $values  = [];
-
-        foreach ($keys as $field) {
-            $fields[] = $this->parseKey($query, $field);
-        }
-
-        foreach ($datas as $data) {
-            foreach ($data as $key => &$val) {
-                if (!$query->isAutoBind()) {
-                    $val = PDO::PARAM_STR == $bind[$keys[$key]] ? '\'' . $val . '\'' : $val;
-                } else {
-                    $val = $this->parseDataBind($query, $keys[$key], $val, $bind);
-                }
-            }
-            $values[] = '( ' . implode(',', $data) . ' )';
-        }
-
-        return str_replace(
-            ['%INSERT%', '%EXTRA%', '%TABLE%', '%PARTITION%', '%FIELD%', '%DATA%', '%DUPLICATE%', '%COMMENT%'],
-            [
-                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
-                $this->parseExtra($query, $options['extra']),
-                $this->parseTable($query, $options['table']),
-                $this->parsePartition($query, $options['partition']),
-                implode(' , ', $fields),
-                implode(' , ', $values),
-                $this->parseDuplicate($query, $options['duplicate']),
-                $this->parseComment($query, $options['comment']),
-            ],
-            $this->insertAllSql
-        );
-    }
-
 }

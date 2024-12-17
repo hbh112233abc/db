@@ -2,3 +2,4 @@ runtime/
 vendor/
 config/
 *.lock
+.phpunit.result.cache

@@ -8,7 +8,7 @@ class DmTest extends ThinkTest
 {
     public function testConnect()
     {
-        $db   = Db::connect();
+        $db   = Db::connect('dm');
         $data = $db->getTables();
         dump($data);
         $this->assertIsArray($data);
@@ -16,10 +16,10 @@ class DmTest extends ThinkTest
 
     public function __testDropTable()
     {
-        $db     = Db::connect();
+        $db     = Db::connect('dm');
         $tables = $db->getTables();
         foreach ($tables as $table) {
-            $sql = "DROP TABLE IF EXISTS `{$table}`";
+            $sql = "DROP TABLE IF EXISTS {$table}";
             $res = $db->execute($sql);
             dump($table, $res);
         }
@@ -27,7 +27,7 @@ class DmTest extends ThinkTest
 
     public function testInsert()
     {
-        $db  = Db::connect();
+        $db  = Db::connect('dm');
         $ad  = [
             "id"          => 11,
             "sno"         => 0,
@@ -44,7 +44,7 @@ class DmTest extends ThinkTest
 
     public function testInsertAll()
     {
-        $db   = Db::connect();
+        $db   = Db::connect('dm');
         $data = [
             [
                 "id"          => 3,
@@ -445,7 +445,7 @@ class DmTest extends ThinkTest
     }
     public function testUpdate()
     {
-        $db = Db::connect();
+        $db = Db::connect('dm');
 
         $title = "别动UTF-8";
         $res   = $db->name('hy_ad')->where('id', 9)->update(['title' => $title]);
@@ -455,7 +455,7 @@ class DmTest extends ThinkTest
 
     public function testKeyword()
     {
-        $db   = Db::connect();
+        $db   = Db::connect('dm');
         $data = [
             "mysqlid" => "backup_database",
             "ip"      => "192.168.103.38",
@@ -469,7 +469,7 @@ class DmTest extends ThinkTest
     }
     public function testInsertGetId()
     {
-        $db   = Db::connect();
+        $db   = Db::connect('dm');
         $data = [
             "mysqlid" => "backup_database",
             "ip"      => "192.168.103.38",
