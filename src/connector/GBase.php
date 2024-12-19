@@ -123,17 +123,21 @@ class GBase extends PDOConnection
             throw new \InvalidArgumentException("`driver` only support 'pdo_gbasedbt','pdo_odbc'");
         }
         if ($driver == 'pdo_odbc') {
-            if (PHP_INT_SIZE == 4) {
-                $driver = 'odbc:Driver={GBase ODBC DRIVER};';
+            if (stristr(PHP_OS, 'WIN')) {
+                if (PHP_INT_SIZE == 4) {
+                    $driver = 'odbc:Driver={GBase ODBC DRIVER};';
+                } else {
+                    $driver = 'odbc:Driver={GBase ODBC DRIVER (64-bit)};';
+                }
             } else {
-                $driver = 'odbc:Driver={GBase ODBC DRIVER (64-bit)};';
+                $dirver = 'odbc:Driver=/opt/GBASE/gbase/lib/cli/iclis09b.so;';
             }
         } else {
             $driver = 'gbasedbt:';
         }
 
         $dsn = sprintf(
-            "%sHOST=%s;SERV=%s;PROT=onsoctcp;SRVR=%s;DB=%s;DLOC=%s;CLOC=%s;sqlmode=oracle;",
+            "%sHOST=%s;SERV=%s;PROT=onsoctcp;SRVR=%s;DB=%s;DLOC=%s;CLOC=%s;UID=%s;PWD=%s;sqlmode=oracle;",
             $driver,
             $config['hostname'],
             $config['hostport'],
@@ -141,6 +145,8 @@ class GBase extends PDOConnection
             $config['database'],
             $config['charset'],
             $config['client_charset'],
+            $config['username'],
+            $config['password'],
         );
 
         return $dsn;

@@ -159,6 +159,105 @@ class GBase extends Builder
     }
 
     /**
+     * 生成Insert SQL.
+     *
+     * @param Query $query 查询对象
+     *
+     * @return string
+     */
+    public function insert(Query $query): string
+    {
+        $options = $query->getOptions();
+
+        if (!empty($options['replace'])) {
+            return $this->replaceSql($query);
+        }
+
+        // 分析并处理数据
+        $data = $this->parseData($query, $options['data']);
+        if (empty($data)) {
+            return '';
+        }
+
+        $fields = array_keys($data);
+        $values = array_values($data);
+
+        return str_replace(
+            ['%INSERT%', '%TABLE%', '%EXTRA%', '%FIELD%', '%DATA%', '%COMMENT%'],
+            [
+                'INSERT',
+                $this->parseTable($query, $options['table']),
+                $this->parseExtra($query, $options['extra']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->insertSql
+        );
+    }
+
+    /**
+     * 生成replace into操作语句
+     * @param \think\db\BaseQuery $query
+     * @throws \DateException
+     * @return string
+     */
+    public function replaceSql(Query $query)
+    {
+        $options = $query->getOptions();
+
+        // 分析并处理数据
+        $data = $this->parseData($query, $options['data']);
+        if (empty($data)) {
+            return '';
+        }
+
+        $fields = array_keys($data);
+        $values = array_values($data);
+
+        //获取主键字段
+        $pk = $query->getConnection()->getPk($this->parseTable($query, $options['table']));
+        if (!is_string($pk)) {
+            throw new Exception(
+                sprintf('Replace into operate require table [%s] must has a primary key', $options['table'])
+            );
+        }
+        if (!in_array($pk, $fields)) {
+            throw new Exception(
+                sprintf('Replace into operate require data with primary key [%s]', $pk)
+            );
+        }
+        $on  = sprintf('(t1.%s = t2.%s)', $pk, $pk);
+        $set = [];
+        $as  = [];
+        foreach ($data as $key => $val) {
+            $as[] = $val . ' AS ' . $key;
+            if ($key == $pk) {
+                continue;
+            }
+            $set[] = $key . ' = ' . $val;
+        }
+        $t2     = sprintf("(SELECT %s from dual)", implode(',', $as));
+        $insert = sprintf("INSERT (%s) VALUES (%s)", implode(',', $fields), implode(',', $values));
+        $update = sprintf("UPDATE SET %s", implode(',', $set));
+
+        $tplSql = "MERGE INTO %TABLE% t1 USING %TEMP% t2 ON %ON% WHEN MATCHED THEN %UPDATE% WHEN NOT MATCHED THEN %INSERT%";
+
+        $finalSql = str_replace(
+            ['%TABLE%', '%TEMP%', '%ON%', '%UPDATE%', '%INSERT%'],
+            [
+                $this->parseTable($query, $options['table']),
+                $t2,
+                $on,
+                $update,
+                $insert,
+            ],
+            $tplSql
+        );
+        return $finalSql;
+    }
+
+    /**
      * 生成insertall SQL.
      *
      * @param Query $query   查询对象

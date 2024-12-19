@@ -6,11 +6,16 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\Attributes\Depends;
 use bingher\ThinkTest\ThinkTest;
+use bingher\db\connector\GBase;
 use think\facade\Db;
 
 #[RequiresPhpExtension('pdo_odbc')]
 final class GBaseTest extends ThinkTest
 {
+    /**
+     * GBase
+     * @var GBase
+     */
     static $DB;
     public static function setUpBeforeClass(): void
     {
@@ -241,5 +246,55 @@ final class GBaseTest extends ThinkTest
         dump($res);
         $this->assertTrue(count($res) > 0);
         $this->assertTrue(in_array('pages', array_keys($res[0])));
+    }
+
+    public function testReplaceFail1()
+    {
+        $createTableSql = "create table if not exists test (name varchar(20),state smallint)";
+        static::$DB->execute($createTableSql);
+        $this->expectExceptionMessageMatches('/.* must has a primary key$/');
+        static::$DB->table('test')->replace()->insert(['name' => 'hbh', 'state' => 1]);
+        $dropTableSql = 'drop table if exists test';
+        static::$DB->execute($dropTableSql);
+    }
+    public function testReplaceFail2()
+    {
+        $bookId = static::$DB->table('books')->where('isbn', '9787544274188')->value('book_id');
+        $book   = [
+            'title'            => '了不起的锅盖饭',
+            'isbn'             => '9787544274188',
+            'publisher'        => '上海文艺出版社',
+            'publication_date' => '1999-01-01',
+            'language'         => '中文',
+            'page_count'       => 218,
+            'summary'          => '一部以爵士时代为背景的小说。'
+        ];
+        $this->expectExceptionMessageMatches('/.* require data with primary key \[\w+\]/');
+        static::$DB->table('books')->replace()->insert($book);
+    }
+    public function testReplaceOk()
+    {
+        $bookId = static::$DB->table('books')->where('isbn', '9787544274188')->value('book_id');
+        $book   = [
+            'book_id'          => $bookId,
+            'title'            => '了不起的锅盖饭',
+            'isbn'             => '9787544274188',
+            'publisher'        => '上海文艺出版社',
+            'publication_date' => '1999-01-01',
+            'language'         => '中文',
+            'page_count'       => 218,
+            'summary'          => '一部以爵士时代为背景的小说。'
+        ];
+        $res    = static::$DB->table('books')->replace()->insert($book);
+        $this->assertEquals($res, 1);
+        $title = static::$DB->table('books')->where('book_id', $bookId)->value('title');
+        $this->assertEquals($title, $book['title']);
+        $maxBookId       = static::$DB->table('books')->max('book_id');
+        $book['book_id'] = $maxBookId + 1;
+        $count           = static::$DB->table('books')->count();
+        $res             = static::$DB->table('books')->replace()->insert($book);
+        $this->assertEquals($res, 1);
+        $newCount = static::$DB->table('books')->count();
+        $this->assertEquals($newCount, $count + 1);
     }
 }

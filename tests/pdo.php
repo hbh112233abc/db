@@ -6,6 +6,8 @@ $options = [
 
 $conn = new PDO("odbc:Driver={GBase ODBC DRIVER (64-bit)};HOST=192.168.102.137;SERV=9088;PROT=onsoctcp;SRVR=gbase351;DB=testdb;DLOC=zh_CN.utf8;CLOC=zh_CN.utf8;sqlmode=oracle;", "gbasedbt", "GBase123$%", $options);
 
+$conn = new PDO("gbasedbt:HOST=192.168.102.137;SERV=9088;PROT=onsoctcp;SRVR=gbase351;DB=testdb;DLOC=zh_CN.utf8;CLOC=zh_CN.utf8;sqlmode=oracle;", "gbasedbt", "GBase123$%");
+
 # 指定数据库连接指令
 $conn->setAttribute(PDO::ATTR_CASE, PDO::CASE_NATURAL);
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -40,40 +42,56 @@ $params = [
     'ThinkBind_2_594694550_' => ['贯中', 2],
     'ThinkBind_3_184691396_' => ['元末明初小说家，以《三国演义》最为人所知。', 2],
 ];
-// $sql    = "INSERT INTO authors (first_name , last_name , biography) VALUES (?, ?, ?) ";
-// $params = [
-//     1 => '罗',
-//     2 => '贯中',
-//     3 => '元末明初小说家，以《三国演义》最为人所知。',
-// ];
-// $params = [
-//     'ThinkBind_1_227461117_' => '罗',
-//     'ThinkBind_2_594694550_' => '贯中',
-//     'ThinkBind_3_184691396_' => '元末明初小说家，以《三国演义》最为人所知。',
-// ];
-
-
-// $sql = "INSERT INTO authors (first_name , last_name , biography) VALUES ('罗','贯中','元末明初小说家，以《三国演义》最为人所知。')";
-// $sql = "INSERT INTO authors (first_name , last_name , biography) VALUES ('Luo','GuanZhong','A novelist of the late Yuan and early Ming dynasties, best known for his Romance of the Three Kingdoms.')";
-// $res = query($conn, $sql);
-// print_r($res);
 
 // $sql = "INSERT INTO authors (first_name , last_name ) VALUES (?,?)";
-$sql = "INSERT INTO authors (first_name , last_name ) VALUES (:first,:last)";
-$sql = "INSERT INTO authors (first_name , last_name ) VALUES ('张','飞')";
-// $sql = "INSERT INTO authors (first_name , last_name ) VALUES ('Zhang','Fei')";
-// $sql = "update authors set first_name = :first where author_id = 6;";
-// $sql = "select * from authors where author_id > 2";
+// $res = query($conn, $sql, [1 => "西汉", 2=> '阿道夫1']);
+// $sql = "INSERT INTO authors (first_name , last_name ) VALUES (:first,:last)";
 // $res = query($conn, $sql, ['first' => "西汉", 'last' => '阿道夫1']);
-$sql = "select * from authors where first_name like ?";
+// $sql = "select * from authors where first_name like ?";
 // $res = query($conn, $sql, [1 => '%西%']);
 
-$sql    = "INSERT INTO categories2 (category_name , description) VALUES ( :ThinkBind_1_967973704_,:ThinkBind_2_411574836_ ) , ( :ThinkBind_3_1616502750_,:ThinkBind_4_1426350195_ )";
+// $sql    = "INSERT INTO categories2 (category_name , description) VALUES ( :ThinkBind_1_967973704_,:ThinkBind_2_411574836_ ) , ( :ThinkBind_3_1616502750_,:ThinkBind_4_1426350195_ )";
+// $params = [
+//     'ThinkBind_1_967973704_'  => ["历史小说", 2],
+//     'ThinkBind_2_411574836_'  => ["以历史事件为背景的小说", 3],
+//     'ThinkBind_3_1616502750_' => ["文学经典", 2],
+//     'ThinkBind_4_1426350195_' => ["具有重要文学价值和历史意义的经典作品", 3],
+// ];
+
+$sql = "MERGE INTO books t1 USING
+(SELECT :ThinkBind_1_267255032_1 AS book_id,:ThinkBind_2_1660145108_1 AS title,:ThinkBind_3_2096761282_1 AS isbn,:ThinkBind_4_377606364_1 AS publisher,:ThinkBind_5_931818477_1 AS publication_date,:ThinkBind_6_1629230867_1 AS language,:ThinkBind_7_815776853_1 AS page_count,:ThinkBind_8_63928704_1 AS summary from dual) t2
+ON (t1.book_id = t2.book_id)
+WHEN MATCHED THEN
+UPDATE SET title = :ThinkBind_2_1660145108_2,isbn = :ThinkBind_3_2096761282_2,publisher = :ThinkBind_4_377606364_2,publication_date = :ThinkBind_5_931818477_2,language = :ThinkBind_6_1629230867_2,page_count = :ThinkBind_7_815776853_2,summary = :ThinkBind_8_63928704_2
+WHEN NOT MATCHED THEN
+INSERT (book_id,title,isbn,publisher,publication_date,language,page_count,summary) VALUES (:ThinkBind_1_267255032_3,:ThinkBind_2_1660145108_3,:ThinkBind_3_2096761282_3,:ThinkBind_4_377606364_3,:ThinkBind_5_931818477_3,:ThinkBind_6_1629230867_3,:ThinkBind_7_815776853_3,:ThinkBind_8_63928704_3)";
+
 $params = [
-    'ThinkBind_1_967973704_'  => ["历史小说", 2],
-    'ThinkBind_2_411574836_'  => ["以历史事件为背景的小说", 3],
-    'ThinkBind_3_1616502750_' => ["文学经典", 2],
-    'ThinkBind_4_1426350195_' => ["具有重要文学价值和历史意义的经典作品", 3],
+    'ThinkBind_1_267255032_1'  => [5, 1],
+    'ThinkBind_2_1660145108_1' => '了不起的锅盖饭',
+    'ThinkBind_3_2096761282_1' => '9787544274188',
+    'ThinkBind_4_377606364_1'  => '上海文艺出版社',
+    'ThinkBind_5_931818477_1'  => '1999-01-01',
+    'ThinkBind_6_1629230867_1' => '中文',
+    'ThinkBind_7_815776853_1'  => [218, 1],
+    'ThinkBind_8_63928704_1'   => '一部以爵士时代为背景的小说。',
+    'ThinkBind_1_267255032_2'  => [5, 1],
+    'ThinkBind_2_1660145108_2' => '了不起的锅盖饭',
+    'ThinkBind_3_2096761282_2' => '9787544274188',
+    'ThinkBind_4_377606364_2'  => '上海文艺出版社',
+    'ThinkBind_5_931818477_2'  => '1999-01-01',
+    'ThinkBind_6_1629230867_2' => '中文',
+    'ThinkBind_7_815776853_2'  => [218, 1],
+    'ThinkBind_8_63928704_2'   => '一部以爵士时代为背景的小说。',
+    'ThinkBind_1_267255032_3'  => [5, 1],
+    'ThinkBind_2_1660145108_3' => '了不起的锅盖饭',
+    'ThinkBind_3_2096761282_3' => '9787544274188',
+    'ThinkBind_4_377606364_3'  => '上海文艺出版社',
+    'ThinkBind_5_931818477_3'  => '1999-01-01',
+    'ThinkBind_6_1629230867_3' => '中文',
+    'ThinkBind_7_815776853_3'  => [218, 1],
+    'ThinkBind_8_63928704_3'   => '一部以爵士时代为背景的小说。',
 ];
-$res    = query($conn, $sql, $params);
+
+$res = query($conn, $sql, $params);
 print_r($res);
