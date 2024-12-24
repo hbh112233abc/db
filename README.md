@@ -1,4 +1,4 @@
-# think-orm driver for DM(达梦),GBase8s(南大通用),KingDatabase(金仓)
+# think-orm driver for DM(达梦),GBase8s(南大通用),OpenGauss(高斯)
 
 ## 安装
 
