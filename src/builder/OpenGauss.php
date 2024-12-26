@@ -110,4 +110,82 @@ class OpenGauss extends Builder
     {
         return 'RANDOM()';
     }
+
+    /**
+     * 生成Insert SQL.
+     *
+     * @param Query $query 查询对象
+     *
+     * @return string
+     */
+    public function insert(Query $query): string
+    {
+        $options = $query->getOptions();
+
+        if (!empty($options['replace'])) {
+            return $this->replaceSql($query);
+        }
+        return parent::insert($query);
+    }
+
+    /**
+     * 生成replace into操作语句
+     * @param \think\db\BaseQuery $query
+     * @throws \DateException
+     * @return string
+     */
+    public function replaceSql(Query $query)
+    {
+        $options = $query->getOptions();
+
+        // 分析并处理数据
+        $data1 = $this->parseData($query, $options['data']);
+        if (empty($data1)) {
+            return '';
+        }
+
+        $fields1 = array_keys($data1);
+        $values1 = array_values($data1);
+
+        //获取主键字段
+        $pk = $query->getConnection()->getPk($this->parseTable($query, $options['table']));
+        if (!is_string($pk)) {
+            throw new \Exception(
+                sprintf('Replace into operate require table [%s] must has a primary key', $options['table'])
+            );
+        }
+        if (!in_array($pk, $fields1)) {
+            throw new \Exception(
+                sprintf('Replace into operate require data with primary key [%s]', $pk)
+            );
+        }
+
+        $optData = $options['data'];
+        unset($optData[$pk]);
+        $data2 = $this->parseData($query, $optData);
+        $set   = [];
+        foreach ($data2 as $key => $val) {
+            if ($key == $pk) {
+                continue;
+            }
+            $set[] = $key . ' = ' . $val;
+        }
+
+        $update = sprintf("UPDATE SET %s", implode(',', $set));
+
+        $tplSql = "INSERT INTO %TABLE% (%FIELDS%) VALUES (%VALUES%) ON CONFLICT (%PK%) DO %UPDATE%";
+
+        $finalSql = str_replace(
+            ['%TABLE%', '%FIELDS%', '%VALUES%', '%PK%', '%UPDATE%'],
+            [
+                $this->parseTable($query, $options['table']),
+                implode(',', $fields1),
+                implode(',', $values1),
+                $pk,
+                $update,
+            ],
+            $tplSql
+        );
+        return $finalSql;
+    }
 }

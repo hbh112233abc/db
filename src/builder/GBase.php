@@ -207,13 +207,13 @@ class GBase extends Builder
         $options = $query->getOptions();
 
         // 分析并处理数据
-        $data = $this->parseData($query, $options['data']);
-        if (empty($data)) {
+        $data1 = $this->parseData($query, $options['data']);
+        if (empty($data1)) {
             return '';
         }
 
-        $fields = array_keys($data);
-        $values = array_values($data);
+        $fields1 = array_keys($data1);
+        $values1 = array_values($data1);
 
         //获取主键字段
         $pk = $query->getConnection()->getPk($this->parseTable($query, $options['table']));
@@ -222,7 +222,7 @@ class GBase extends Builder
                 sprintf('Replace into operate require table [%s] must has a primary key', $options['table'])
             );
         }
-        if (!in_array($pk, $fields)) {
+        if (!in_array($pk, $fields1)) {
             throw new Exception(
                 sprintf('Replace into operate require data with primary key [%s]', $pk)
             );
@@ -230,15 +230,26 @@ class GBase extends Builder
         $on  = sprintf('(t1.%s = t2.%s)', $pk, $pk);
         $set = [];
         $as  = [];
-        foreach ($data as $key => $val) {
+        foreach ($data1 as $key => $val) {
             $as[] = $val . ' AS ' . $key;
+        }
+
+        $data2   = $this->parseData($query, $options['data']);
+        $fields2 = array_keys($data2);
+        $values2 = array_values($data2);
+
+        $optData = $options['data'];
+        unset($optData[$pk]);
+        $data3 = $this->parseData($query, $optData);
+        foreach ($data3 as $key => $val) {
             if ($key == $pk) {
                 continue;
             }
             $set[] = $key . ' = ' . $val;
         }
+
         $t2     = sprintf("(SELECT %s from dual)", implode(',', $as));
-        $insert = sprintf("INSERT (%s) VALUES (%s)", implode(',', $fields), implode(',', $values));
+        $insert = sprintf("INSERT (%s) VALUES (%s)", implode(',', $fields2), implode(',', $values2));
         $update = sprintf("UPDATE SET %s", implode(',', $set));
 
         $tplSql = "MERGE INTO %TABLE% t1 USING %TEMP% t2 ON %ON% WHEN MATCHED THEN %UPDATE% WHEN NOT MATCHED THEN %INSERT%";

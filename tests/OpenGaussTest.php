@@ -282,6 +282,7 @@ final class OpenGaussTest extends ThinkTest
         $this->assertEquals($title, $book['title']);
         $maxBookId       = static::$DB->table('books')->max('book_id');
         $book['book_id'] = $maxBookId + 1;
+        $book['isbn']    = strval(time());
         $count           = static::$DB->table('books')->count();
         $res             = static::$DB->table('books')->replace()->insert($book);
         $this->assertEquals($res, 1);

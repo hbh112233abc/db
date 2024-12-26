@@ -30,10 +30,17 @@ class OpenGauss extends PDOConnection
      */
     protected $owner = '';
 
+    /**
+     * 数据库模式
+     * @var string
+     */
+    protected $schema = '';
+
     function __construct(array $config)
     {
         parent::__construct($config);
-        $this->owner = $config['username'];
+        $this->owner  = $config['username'];
+        $this->schema = $config['schema'] ?: 'public';
     }
 
     static function pgType(string $type): string
@@ -69,6 +76,7 @@ class OpenGauss extends PDOConnection
         if (!empty($config['hostport'])) {
             $dsn .= ';port=' . $config['hostport'];
         }
+        $dsn .= ';options=--search_path=' . $this->schema;
 
         return $dsn;
     }
@@ -85,30 +93,30 @@ class OpenGauss extends PDOConnection
         [$tableName] = explode(' ', $tableName);
 
         $sql = <<<EOF
-SELECT
-	a.attnum,
-    a.attname AS field,
-    e.typname AS type,
-    a.attnotnull AS null,
-    pg_get_expr(b.adbin, b.adrelid) AS default,
-    c.description AS column_comment,
-    d.contype AS key
-FROM
-    pg_catalog.pg_attribute a
-LEFT JOIN
-    pg_catalog.pg_attrdef b ON a.attrelid = b.adrelid AND a.attnum = b.adnum
-LEFT JOIN
-    pg_catalog.pg_description c ON c.objoid = a.attrelid AND c.objsubid = a.attnum
-LEFT JOIN
-    pg_catalog.pg_constraint d ON a.attrelid = d.conrelid AND a.attnum = ANY(d.conkey)
-LEFT JOIN pg_type e ON a.atttypid = e.oid
-WHERE
-    a.attrelid = '$tableName'::regclass -- 替换为你的表名
-    AND a.attnum > 0
-    AND NOT a.attisdropped
-ORDER BY
-    a.attnum;
-EOF;
+        SELECT
+            a.attnum,
+            a.attname AS field,
+            e.typname AS type,
+            a.attnotnull AS null,
+            pg_get_expr(b.adbin, b.adrelid) AS default,
+            c.description AS column_comment,
+            d.contype AS key
+        FROM
+            pg_catalog.pg_attribute a
+        LEFT JOIN
+            pg_catalog.pg_attrdef b ON a.attrelid = b.adrelid AND a.attnum = b.adnum
+        LEFT JOIN
+            pg_catalog.pg_description c ON c.objoid = a.attrelid AND c.objsubid = a.attnum
+        LEFT JOIN
+            pg_catalog.pg_constraint d ON a.attrelid = d.conrelid AND a.attnum = ANY(d.conkey)
+        LEFT JOIN pg_type e ON a.atttypid = e.oid
+        WHERE
+            a.attrelid = '$tableName'::regclass -- 替换为你的表名
+            AND a.attnum > 0
+            AND NOT a.attisdropped
+        ORDER BY
+            a.attnum;
+        EOF;
 
         $logSql                      = $this->config['trigger_sql'];
         $this->config['trigger_sql'] = false;
@@ -147,8 +155,8 @@ EOF;
     public function getTables(string $dbName = ''): array
     {
         $sql    = sprintf(
-            "SELECT tablename AS Tables_in_test FROM pg_tables WHERE tableowner ='%s'",
-            $this->owner,
+            "SELECT tablename AS Tables_in_test FROM pg_tables WHERE schemaname ='%s'",
+            $this->schema,
         );
         $pdo    = $this->getPDOStatement($sql);
         $result = $pdo->fetchAll(PDO::FETCH_COLUMN);
