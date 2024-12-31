@@ -181,12 +181,11 @@ class OpenGauss extends PDOConnection
         // 执行操作
         $result = '' == $sql ? [0] : $this->pdoInsertExecute($query, $sql);
         if ($result[0]) {
-            $sequence  = $options['sequence'] ?? null;
             $lastInsId = $result[1];
             $data      = $options['data'];
             if ($lastInsId) {
                 $pk = $query->getAutoInc();
-                if ($pk) {
+                if (is_string($pk) and $pk) {
                     $data[$pk] = $lastInsId;
                 }
             }
