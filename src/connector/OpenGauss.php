@@ -4,6 +4,10 @@ declare(strict_types=1);
 namespace bingher\db\connector;
 
 use PDO;
+use PDOStatement;
+use think\db\BaseQuery;
+use think\db\exception\DbException;
+use think\db\exception\PDOException;
 use think\db\PDOConnection;
 
 /**
@@ -111,7 +115,7 @@ class OpenGauss extends PDOConnection
             pg_catalog.pg_constraint d ON a.attrelid = d.conrelid AND a.attnum = ANY(d.conkey)
         LEFT JOIN pg_type e ON a.atttypid = e.oid
         WHERE
-            a.attrelid = '$tableName'::regclass -- 替换为你的表名
+            a.attrelid = '$tableName'::regclass
             AND a.attnum > 0
             AND NOT a.attisdropped
         ORDER BY
@@ -166,5 +170,57 @@ class OpenGauss extends PDOConnection
     protected function supportSavepoint(): bool
     {
         return true;
+    }
+
+    public function insert(BaseQuery $query, bool $getLastInsID = false)
+    {
+        // 分析查询表达式
+        $options = $query->parseOptions();
+        // 生成SQL语句
+        $sql = $this->builder->insert($query);
+        // 执行操作
+        $result = '' == $sql ? [0] : $this->pdoInsertExecute($query, $sql);
+        if ($result[0]) {
+            $sequence  = $options['sequence'] ?? null;
+            $lastInsId = $result[1];
+            $data      = $options['data'];
+            if ($lastInsId) {
+                $pk = $query->getAutoInc();
+                if ($pk) {
+                    $data[$pk] = $lastInsId;
+                }
+            }
+            $query->setOption('data', $data);
+            $this->db->trigger('after_insert', $query);
+            if ($getLastInsID && $lastInsId) {
+                return $lastInsId;
+            }
+        }
+        return $result[0];
+    }
+
+    protected function pdoInsertExecute(BaseQuery $query, string $sql, bool $origin = false): array
+    {
+        if ($origin) {
+            $query->parseOptions();
+        }
+        $sth    = $this->queryPDOStatement($query->master(true), $sql);
+        $result = $sth->fetch(PDO::FETCH_NUM);
+        if (!$origin && !empty($this->config['deploy']) && !empty($this->config['read_master'])) {
+            $this->readMaster = true;
+        }
+        $this->numRows = $this->PDOStatement->rowCount();
+        if ($query->getOptions('cache')) {
+            // 清理缓存数据
+            $cacheItem = $this->parseCache($query, $query->getOptions('cache'));
+            $key       = $cacheItem->getKey();
+            $tag       = $cacheItem->getTag();
+            if (isset($key) && $this->cache->has($key)) {
+                $this->cache->delete($key);
+            } elseif (!empty($tag) && method_exists($this->cache, 'tag')) {
+                $this->cache->tag($tag)->clear();
+            }
+        }
+        return [$this->numRows, $result[0]];
     }
 }

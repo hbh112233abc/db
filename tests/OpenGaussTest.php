@@ -289,4 +289,36 @@ final class OpenGaussTest extends ThinkTest
         $newCount = static::$DB->table('books')->count();
         $this->assertEquals($newCount, $count + 1);
     }
+
+    public function testTransFail()
+    {
+        static::$DB->startTrans();
+        $bookId   = static::$DB->table('books')->where('isbn', '9787544274188')->value('book_id');
+        $oldPages = static::$DB->table('books')->where('book_id', $bookId)->value('page_count');
+        try {
+            static::$DB->table('books')->where('book_id', $bookId)->update(['page_count' => 300]);
+            throw new \Exception("error msg");
+            static::$DB->commit();
+        } catch (\Throwable $th) {
+            //throw $th;
+            dump($th->getMessage());
+            $this->assertEquals('error msg', $th->getMessage());
+            static::$DB->rollback();
+        }
+    }
+
+    public function testTransOk()
+    {
+        static::$DB->startTrans();
+        $bookId   = static::$DB->table('books')->where('isbn', '9787544274188')->value('book_id');
+        $oldPages = static::$DB->table('books')->where('book_id', $bookId)->value('page_count');
+        try {
+            static::$DB->table('books')->where('book_id', $bookId)->update(['page_count' => 300]);
+            static::$DB->commit();
+        } catch (\Throwable $th) {
+            static::$DB->rollback();
+        }
+        $newPages = static::$DB->table('books')->where('book_id', $bookId)->value('page_count');
+        $this->assertEquals(300, $newPages);
+    }
 }

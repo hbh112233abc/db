@@ -17,7 +17,7 @@ class OpenGauss extends Builder
      *
      * @var string
      */
-    protected $insertSql = 'INSERT INTO %TABLE% (%FIELD%) VALUES (%DATA%) %COMMENT%';
+    protected $insertSql = 'INSERT INTO %TABLE% (%FIELD%) VALUES (%DATA%) %COMMENT% RETURNING %PK%';
 
     /**
      * INSERT ALL SQL表达式.
@@ -125,7 +125,31 @@ class OpenGauss extends Builder
         if (!empty($options['replace'])) {
             return $this->replaceSql($query);
         }
-        return parent::insert($query);
+
+        $options = $query->getOptions();
+
+        // 分析并处理数据
+        $data = $this->parseData($query, $options['data']);
+        if (empty($data)) {
+            return '';
+        }
+
+        $fields = array_keys($data);
+        $values = array_values($data);
+
+        return str_replace(
+            ['%INSERT%', '%TABLE%', '%EXTRA%', '%FIELD%', '%DATA%', '%COMMENT%', '%PK%'],
+            [
+                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                $this->parseTable($query, $options['table']),
+                $this->parseExtra($query, $options['extra']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseComment($query, $options['comment']),
+                $query->getPk(),
+            ],
+            $this->insertSql
+        );
     }
 
     /**
