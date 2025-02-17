@@ -27,6 +27,20 @@ class OpenGauss extends Builder
     protected $insertAllSql = 'INSERT INTO %TABLE% (%FIELD%) %DATA% %COMMENT%';
 
     /**
+     * UPDATE SQL表达式.
+     *
+     * @var string
+     */
+    protected $updateSql = 'UPDATE%EXTRA% %TABLE% %JOIN% SET %SET% %WHERE% %ORDER%%LIMIT% %LOCK%%COMMENT%';
+
+    /**
+     * DELETE SQL表达式.
+     *
+     * @var string
+     */
+    protected $deleteSql = 'DELETE%EXTRA% FROM %TABLE%%USING%%JOIN%%WHERE%%ORDER%%LIMIT% %LOCK%%COMMENT%';
+
+    /**
      * limit分析.
      *
      * @param Query $query 查询对象
@@ -135,12 +149,15 @@ class OpenGauss extends Builder
         }
 
         $fields = array_keys($data);
+        foreach ($fields as &$field) {
+            $field = $this->parseKey($query, $field);
+        }
         $values = array_values($data);
 
         return str_replace(
             ['%INSERT%', '%TABLE%', '%EXTRA%', '%FIELD%', '%DATA%', '%COMMENT%', '%PK%'],
             [
-                !empty($options['replace']) ? 'REPLACE' : 'INSERT',
+                'INSERT',
                 $this->parseTable($query, $options['table']),
                 $this->parseExtra($query, $options['extra']),
                 implode(' , ', $fields),
@@ -151,6 +168,57 @@ class OpenGauss extends Builder
             $this->insertSql
         );
     }
+
+    /**
+     * 生成insertall SQL.
+     *
+     * @param Query $query   查询对象
+     * @param array $dataSet 数据集
+     *
+     * @return string
+     */
+    public function insertAll(Query $query, array $dataSet): string
+    {
+        $options = $query->getOptions();
+        $bind    = $query->getFieldsBindType();
+
+        // 获取合法的字段
+        if (empty($options['field']) || '*' == $options['field']) {
+            $allowFields = array_keys($bind);
+        } else {
+            $allowFields = $options['field'];
+        }
+
+        $fields = [];
+        $values = [];
+
+        foreach ($dataSet as $data) {
+            $data = $this->parseData($query, $data, $allowFields, $bind);
+
+            $values[] = '( ' . implode(',', array_values($data)) . ' )';
+
+            if (!isset($insertFields)) {
+                $insertFields = array_keys($data);
+            }
+        }
+
+        foreach ($insertFields as $field) {
+            $fields[] = $this->parseKey($query, $field);
+        }
+
+        return str_replace(
+            ['%INSERT%', '%TABLE%', '%FIELD%', '%DATA%', '%COMMENT%'],
+            [
+                'INSERT',
+                $this->parseTable($query, $options['table']),
+                implode(' , ', $fields),
+                implode(' , ', $values),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->insertAllSql
+        );
+    }
+
 
     /**
      * 生成replace into操作语句
@@ -169,6 +237,9 @@ class OpenGauss extends Builder
         }
 
         $fields1 = array_keys($data1);
+        foreach ($fields1 as &$field) {
+            $field = $this->parseKey($query, $field);
+        }
         $values1 = array_values($data1);
 
         //获取主键字段
@@ -192,7 +263,7 @@ class OpenGauss extends Builder
             if ($key == $pk) {
                 continue;
             }
-            $set[] = $key . ' = ' . $val;
+            $set[] = $this->parseKey($query, $key) . ' = ' . $val;
         }
 
         $update = sprintf("UPDATE SET %s", implode(',', $set));
@@ -212,4 +283,71 @@ class OpenGauss extends Builder
         );
         return $finalSql;
     }
+
+    /**
+     * 生成update SQL.
+     *
+     * @param Query $query 查询对象
+     *
+     * @return string
+     */
+    public function update(Query $query): string
+    {
+        $options = $query->getOptions();
+        $data    = $this->parseData($query, $options['data']);
+
+        if (empty($data)) {
+            return '';
+        }
+
+        $set = [];
+        foreach ($data as $key => $val) {
+            $set[] = (str_contains($key, '->') ? strstr($key, '->', true) : $key) . ' = ' . $val;
+        }
+
+        return str_replace(
+            ['%TABLE%', '%EXTRA%', '%SET%', '%JOIN%', '%WHERE%', '%ORDER%', '%LIMIT%', '%LOCK%', '%COMMENT%'],
+            [
+                $this->parseTable($query, $options['table']),
+                $this->parseExtra($query, $options['extra']),
+                implode(' , ', $set),
+                $this->parseJoin($query, $options['join']),
+                $this->parseWhere($query, $options['where']),
+                $this->parseOrder($query, $options['order']),
+                $this->parseLimit($query, $options['limit']),
+                $this->parseLock($query, $options['lock']),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->updateSql
+        );
+    }
+
+    /**
+     * 生成delete SQL.
+     *
+     * @param Query $query 查询对象
+     *
+     * @return string
+     */
+    public function delete(Query $query): string
+    {
+        $options = $query->getOptions();
+
+        return str_replace(
+            ['%TABLE%', '%PARTITION%', '%EXTRA%', '%USING%', '%JOIN%', '%WHERE%', '%ORDER%', '%LIMIT%', '%LOCK%', '%COMMENT%'],
+            [
+                $this->parseTable($query, $options['table']),
+                $this->parseExtra($query, $options['extra']),
+                !empty($options['using']) ? ' USING ' . $this->parseTable($query, $options['using']) . ' ' : '',
+                $this->parseJoin($query, $options['join']),
+                $this->parseWhere($query, $options['where']),
+                $this->parseOrder($query, $options['order']),
+                $this->parseLimit($query, $options['limit']),
+                $this->parseLock($query, $options['lock']),
+                $this->parseComment($query, $options['comment']),
+            ],
+            $this->deleteSql
+        );
+    }
+
 }
