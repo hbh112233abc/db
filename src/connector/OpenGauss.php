@@ -220,6 +220,6 @@ class OpenGauss extends PDOConnection
                 $this->cache->tag($tag)->clear();
             }
         }
-        return [$this->numRows, $result[0]];
+        return [$this->numRows, $result[0]??''];
     }
 }

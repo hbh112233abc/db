@@ -17,7 +17,7 @@ class OpenGauss extends Builder
      *
      * @var string
      */
-    protected $insertSql = 'INSERT INTO %TABLE% (%FIELD%) VALUES (%DATA%) %COMMENT% RETURNING %PK%';
+    protected $insertSql = 'INSERT INTO %TABLE% (%FIELD%) VALUES (%DATA%) %COMMENT% %PK%';
 
     /**
      * INSERT ALL SQL表达式.
@@ -153,7 +153,7 @@ class OpenGauss extends Builder
             $field = $this->parseKey($query, $field);
         }
         $values = array_values($data);
-
+        $pk     = $query->getPk();
         return str_replace(
             ['%INSERT%', '%TABLE%', '%EXTRA%', '%FIELD%', '%DATA%', '%COMMENT%', '%PK%'],
             [
@@ -163,7 +163,7 @@ class OpenGauss extends Builder
                 implode(' , ', $fields),
                 implode(' , ', $values),
                 $this->parseComment($query, $options['comment']),
-                $query->getPk(),
+                is_array($pk) ? '' : 'RETURNING ' . $pk,
             ],
             $this->insertSql
         );
