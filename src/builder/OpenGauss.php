@@ -100,10 +100,9 @@ class OpenGauss extends Builder
             if (isset($alias[$table])) {
                 $table = $alias[$table];
             }
-
-            if ('*' != $key && !preg_match('/[,\"\*\(\).\s]/', $key)) {
-                $key = '"' . $key . '"';
-            }
+        }
+        if ('*' != $key && !preg_match('/[,\"\*\(\).\s]/', $key)) {
+            $key = '"' . $key . '"';
         }
 
         if (isset($table)) {
