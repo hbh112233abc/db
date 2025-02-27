@@ -24,7 +24,7 @@ class OpenGauss extends Builder
      *
      * @var string
      */
-    protected $insertAllSql = 'INSERT INTO %TABLE% (%FIELD%) %DATA% %COMMENT%';
+    protected $insertAllSql = 'INSERT INTO %TABLE% (%FIELD%) VALUES %DATA% %COMMENT%';
 
     /**
      * UPDATE SQL表达式.
@@ -151,8 +151,12 @@ class OpenGauss extends Builder
         foreach ($fields as &$field) {
             $field = $this->parseKey($query, $field);
         }
-        $values = array_values($data);
-        $pk     = $query->getPk();
+        $values   = array_values($data);
+        $pk       = $query->getPk();
+        $returnPK = '';
+        if ($pk && is_string($pk)) {
+            $returnPK = 'RETURNING ' . $pk;
+        }
         return str_replace(
             ['%INSERT%', '%TABLE%', '%EXTRA%', '%FIELD%', '%DATA%', '%COMMENT%', '%PK%'],
             [
@@ -162,7 +166,7 @@ class OpenGauss extends Builder
                 implode(' , ', $fields),
                 implode(' , ', $values),
                 $this->parseComment($query, $options['comment']),
-                is_array($pk) ? '' : 'RETURNING ' . $pk,
+                $returnPK,
             ],
             $this->insertSql
         );
@@ -192,17 +196,12 @@ class OpenGauss extends Builder
         $values = [];
 
         foreach ($dataSet as $data) {
-            $data = $this->parseData($query, $data, $allowFields, $bind);
-
+            $data     = $this->parseData($query, $data, $allowFields, $bind);
             $values[] = '( ' . implode(',', array_values($data)) . ' )';
 
             if (!isset($insertFields)) {
-                $insertFields = array_keys($data);
+                $fields = array_keys($data);
             }
-        }
-
-        foreach ($insertFields as $field) {
-            $fields[] = $this->parseKey($query, $field);
         }
 
         return str_replace(
