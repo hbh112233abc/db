@@ -206,6 +206,9 @@ class DM extends PDOConnection
     protected function setIdentityInsert(BaseQuery $query, bool $on = true): int
     {
         $pk = $query->getPk();
+        if (!is_string($pk)) {
+            return 0;
+        }
         if (empty($pk)) {
             return 0;
         }
