@@ -40,6 +40,39 @@ class DM extends Builder
     }
 
     /**
+     * table分析.
+     *
+     * @param Query $query  查询对象
+     * @param array|string $tables 表名
+     *
+     * @return string
+     */
+    protected function parseTable(Query $query, array | string $tables): string
+    {
+        $item    = [];
+        $options = $query->getOptions();
+
+        foreach ((array) $tables as $key => $table) {
+            if ($table instanceof Raw) {
+                $item[] = $this->parseRaw($query, $table);
+            } elseif (!is_numeric($key)) {
+                $key = $query->fitTable($key);
+                $item[] = $this->parseKey($query, $key) . ' ' . $this->parseKey($query, $table);
+            } elseif (isset($options['alias'][$table])) {
+                $table = $query->fitTable($table);
+                $item[] = $this->parseKey($query, $table) . ' ' . $this->parseKey($query, $options['alias'][$table]);
+            } else {
+                $table = $query->fitTable($table);
+                $item[] = $this->parseKey($query, $table);
+            }
+        }
+
+        return implode(',', $item);
+    }
+
+
+
+    /**
      * 字段和表名处理
      * @access public
      *
