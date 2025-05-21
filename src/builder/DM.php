@@ -56,14 +56,17 @@ class DM extends Builder
             if ($table instanceof Raw) {
                 $item[] = $this->parseRaw($query, $table);
             } elseif (!is_numeric($key)) {
-                $key = $query->fitTable($key);
-                $item[] = $this->parseKey($query, $key) . ' ' . $this->parseKey($query, $table);
+                $alias = $this->parseKey($query, $table);
+                $table = $this->parseKey($query, $key);
+                $table = $query->fitTable($table);
+                $item[] = $table . ' ' . $alias;
             } elseif (isset($options['alias'][$table])) {
+                $alias = $this->parseKey($query, $options['alias'][$table]);
+                $table = $this->parseKey($query, $table);
                 $table = $query->fitTable($table);
-                $item[] = $this->parseKey($query, $table) . ' ' . $this->parseKey($query, $options['alias'][$table]);
+                $item[] = $table . ' ' . $alias;
             } else {
-                $table = $query->fitTable($table);
-                $item[] = $this->parseKey($query, $table);
+                $item[] = $query->fitTable($this->parseKey($query, $table));
             }
         }
 
@@ -109,6 +112,9 @@ class DM extends Builder
             if (isset($alias[$table])) {
                 $table = $alias[$table];
             }
+        } elseif (stripos($key,' as ') > 0){
+            [$key,$alias] = preg_split('/\s+as\s+/i',$key);
+            return $this->parseKey($query,$key).' AS '.$this->parseKey($query,$alias);
         }
 
         if ($strict && !preg_match('/^[\w\.\*]+$/', $key)) {
