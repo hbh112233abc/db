@@ -112,9 +112,6 @@ class DM extends Builder
             if (isset($alias[$table])) {
                 $table = $alias[$table];
             }
-        } elseif (stripos($key,' as ') > 0){
-            [$key,$alias] = preg_split('/\s+as\s+/i',$key);
-            return $this->parseKey($query,$key).' AS '.$this->parseKey($query,$alias);
         }
 
         if ($strict && !preg_match('/^[\w\.\*]+$/', $key)) {
