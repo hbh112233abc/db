@@ -1,10 +1,10 @@
 <?php
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace bingher\db\builder;
 
-use think\db\Builder;
 use think\db\BaseQuery as Query;
+use think\db\Builder;
 use think\db\Raw;
 
 /**
@@ -52,7 +52,7 @@ class OpenGauss extends Builder
     {
         $limitStr = '';
 
-        if (!empty($limit)) {
+        if (! empty($limit)) {
             $limit = explode(',', $limit);
             if (count($limit) > 1) {
                 $limitStr .= ' LIMIT ' . $limit[1] . ' OFFSET ' . $limit[0] . ' ';
@@ -73,7 +73,7 @@ class OpenGauss extends Builder
      *
      * @return string
      */
-    public function parseKey(Query $query, string|int|Raw $key, bool $strict = false): string
+    public function parseKey(Query $query, string | int | Raw $key, bool $strict = false): string
     {
         if (is_int($key)) {
             return (string) $key;
@@ -83,7 +83,7 @@ class OpenGauss extends Builder
 
         $key = trim($key);
 
-        if (str_contains($key, '->') && !str_contains($key, '(')) {
+        if (str_contains($key, '->') && ! str_contains($key, '(')) {
             // JSON字段支持
             [$field, $name] = explode('->', $key);
             $key            = '"' . $field . '"' . '->>\'' . $name . '\'';
@@ -101,12 +101,13 @@ class OpenGauss extends Builder
                 $table = $alias[$table];
             }
         }
-        if ('*' != $key && !preg_match('/[,\"\*\(\).\s]/', $key)) {
+        if ('*' != $key && ! preg_match('/[,\"\*\(\).\s]/', $key)) {
             $key = '"' . $key . '"';
         }
 
         if (isset($table)) {
-            $key = $table . '.' . $key;
+            $table = '"' . $table . '"';
+            $key   = $table . '.' . $key;
         }
 
         return $key;
@@ -135,7 +136,7 @@ class OpenGauss extends Builder
     {
         $options = $query->getOptions();
 
-        if (!empty($options['replace'])) {
+        if (! empty($options['replace'])) {
             return $this->replaceSql($query);
         }
 
@@ -199,7 +200,7 @@ class OpenGauss extends Builder
             $data     = $this->parseData($query, $data, $allowFields, $bind);
             $values[] = '( ' . implode(',', array_values($data)) . ' )';
 
-            if (!isset($insertFields)) {
+            if (! isset($insertFields)) {
                 $fields = array_keys($data);
             }
         }
@@ -216,7 +217,6 @@ class OpenGauss extends Builder
             $this->insertAllSql
         );
     }
-
 
     /**
      * 生成replace into操作语句
@@ -242,12 +242,12 @@ class OpenGauss extends Builder
 
         //获取主键字段
         $pk = $query->getConnection()->getPk($this->parseTable($query, $options['table']));
-        if (!is_string($pk)) {
+        if (! is_string($pk)) {
             throw new \Exception(
                 sprintf('Replace into operate require table [%s] must has a primary key', $options['table'])
             );
         }
-        if (!in_array($pk, $fields1)) {
+        if (! in_array($pk, $fields1)) {
             throw new \Exception(
                 sprintf('Replace into operate require data with primary key [%s]', $pk)
             );
@@ -336,7 +336,7 @@ class OpenGauss extends Builder
             [
                 $this->parseTable($query, $options['table']),
                 $this->parseExtra($query, $options['extra']),
-                !empty($options['using']) ? ' USING ' . $this->parseTable($query, $options['using']) . ' ' : '',
+                ! empty($options['using']) ? ' USING ' . $this->parseTable($query, $options['using']) . ' ' : '',
                 $this->parseJoin($query, $options['join']),
                 $this->parseWhere($query, $options['where']),
                 $this->parseOrder($query, $options['order']),
