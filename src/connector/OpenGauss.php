@@ -1,13 +1,11 @@
 <?php
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace bingher\db\connector;
 
 use PDO;
 use PDOStatement;
 use think\db\BaseQuery;
-use think\db\exception\DbException;
-use think\db\exception\PDOException;
 use think\db\PDOConnection;
 
 /**
@@ -40,23 +38,26 @@ class OpenGauss extends PDOConnection
      */
     protected $schema = '';
 
-    function __construct(array $config)
+    public function __construct(array $config)
     {
         parent::__construct($config);
         $this->owner  = $config['username'];
         $this->schema = $config['schema'] ?: 'public';
     }
 
-    static function pgType(string $type): string
+    public static function pgType(string $type): string
     {
         switch ($type) {
             case 'int8':
+            case 'uint8':
                 $type = 'bigint';
                 break;
             case 'int4':
+            case 'uint4':
                 $type = 'integer';
                 break;
             case 'int2':
+            case 'uint2':
                 $type = 'smallint';
                 break;
             case 'bpchar':
@@ -77,7 +78,7 @@ class OpenGauss extends PDOConnection
     {
         $dsn = 'pgsql:dbname=' . $config['database'] . ';host=' . $config['hostname'];
 
-        if (!empty($config['hostport'])) {
+        if (! empty($config['hostport'])) {
             $dsn .= ';port=' . $config['hostport'];
         }
         $dsn .= ';options=--search_path=' . $this->schema;
@@ -131,9 +132,15 @@ class OpenGauss extends PDOConnection
         $this->config['trigger_sql'] = $logSql;
         $info                        = [];
 
-        if (!empty($result)) {
+        if (! empty($result)) {
             foreach ($result as $key => $val) {
                 $val = array_change_key_case($val);
+
+                $default = (string) $val['default'];
+                $autoInc = false;
+                if ($default == 'AUTO_INCREMENT' || str_starts_with($default, 'nextval(')) {
+                    $autoInc = true;
+                }
 
                 $info[$val['field']] = [
                     'name'    => $val['field'],
@@ -141,7 +148,7 @@ class OpenGauss extends PDOConnection
                     'notnull' => (bool) $val['null'],
                     'default' => $val['default'],
                     'primary' => $val['key'] == 'p',
-                    'autoinc' => str_starts_with((string) $val['default'], 'nextval('),
+                    'autoinc' => $autoInc,
                 ];
             }
         }
@@ -158,7 +165,7 @@ class OpenGauss extends PDOConnection
      */
     public function getTables(string $dbName = ''): array
     {
-        $sql    = sprintf(
+        $sql = sprintf(
             "SELECT tablename AS Tables_in_test FROM pg_tables WHERE schemaname ='%s'",
             $this->schema,
         );
@@ -205,7 +212,7 @@ class OpenGauss extends PDOConnection
         }
         $sth    = $this->queryPDOStatement($query->master(true), $sql);
         $result = $sth->fetch(PDO::FETCH_NUM);
-        if (!$origin && !empty($this->config['deploy']) && !empty($this->config['read_master'])) {
+        if (! $origin && ! empty($this->config['deploy']) && ! empty($this->config['read_master'])) {
             $this->readMaster = true;
         }
         $this->numRows = $this->PDOStatement->rowCount();
@@ -216,10 +223,10 @@ class OpenGauss extends PDOConnection
             $tag       = $cacheItem->getTag();
             if (isset($key) && $this->cache->has($key)) {
                 $this->cache->delete($key);
-            } elseif (!empty($tag) && method_exists($this->cache, 'tag')) {
+            } elseif (! empty($tag) && method_exists($this->cache, 'tag')) {
                 $this->cache->tag($tag)->clear();
             }
         }
-        return [$this->numRows, $result[0]??''];
+        return [$this->numRows, $result[0] ?? ''];
     }
 }
