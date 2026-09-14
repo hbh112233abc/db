@@ -7,6 +7,10 @@
         "topthink/framework": "^5|^6|^8.0",
         "topthink/think-orm": "^2.0|^3.0|^4.0"
     },
+    "suggest": {
+        "meilisearch/meilisearch-php": "使用 Meilisearch 客户端(bingher\\db\\meilisearch)时需要安装的官方 SDK",
+        "guzzlehttp/guzzle": "Meilisearch 官方 SDK 所需的 PSR-18 HTTP 客户端实现(版本需 ^7.9)"
+    },
     "license": "MIT",
     "autoload": {
         "psr-4": {
